@@ -18,13 +18,20 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-// CryptoContext holds the session key and sequence counters for AES-GCM.
+// CryptoContext holds one session's AES-256-GCM state. Both peers hold
+// the same 32-byte SessionKey and encrypt under it with independently
+// random 96-bit nonces, so nonce reuse across the two senders is a
+// collision probability question (2^-96 per pair), not a protocol risk.
+// The AAD "sessionId|seq|senderKeyVersion" pins every frame to its
+// position: recvSeq is a high-water mark, and any frame at or below it
+// is rejected as a replay. One CryptoContext per session per peer;
+// contexts are never reused across sessions or rekeys.
 type CryptoContext struct {
 	SessionID       string
 	SessionKey      []byte // 32 bytes
 	LocalKeyVersion int
 	sendSeq         atomic.Int64
-	recvSeq         atomic.Int64 // only goes up
+	recvSeq         atomic.Int64 // replay high-water mark, only goes up
 }
 
 // NewCryptoContext creates a CryptoContext with recvSeq initialized to -1

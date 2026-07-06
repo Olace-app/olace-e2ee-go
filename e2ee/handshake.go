@@ -1,7 +1,7 @@
 package e2ee
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -19,8 +19,8 @@ func BuildSecureRelayHelloTranscript(
 		userID,
 		mobileDeviceID,
 		desktopDeviceID,
-		fmt.Sprintf("%d", mobileKeyVersion),
-		fmt.Sprintf("%d", desktopKeyVersion),
+		strconv.Itoa(mobileKeyVersion),
+		strconv.Itoa(desktopKeyVersion),
 		sessionID,
 		desktopEphemeralPublicKey,
 		desktopNonce,
@@ -40,8 +40,8 @@ func BuildSecureRelayAckTranscript(
 		userID,
 		mobileDeviceID,
 		desktopDeviceID,
-		fmt.Sprintf("%d", mobileKeyVersion),
-		fmt.Sprintf("%d", desktopKeyVersion),
+		strconv.Itoa(mobileKeyVersion),
+		strconv.Itoa(desktopKeyVersion),
 		sessionID,
 		desktopEphemeralPublicKey,
 		mobileEphemeralPublicKey,
@@ -63,8 +63,8 @@ func BuildSecureRelayForwardSecretSessionInfo(
 		userID,
 		mobileDeviceID,
 		desktopDeviceID,
-		fmt.Sprintf("%d", mobileKeyVersion),
-		fmt.Sprintf("%d", desktopKeyVersion),
+		strconv.Itoa(mobileKeyVersion),
+		strconv.Itoa(desktopKeyVersion),
 		sessionID,
 		desktopEphemeralPublicKey,
 		mobileEphemeralPublicKey,
@@ -88,8 +88,8 @@ func BuildP2PHelloTranscript(
 		userID,
 		mobileDeviceID,
 		desktopDeviceID,
-		fmt.Sprintf("%d", mobileKeyVersion),
-		fmt.Sprintf("%d", desktopKeyVersion),
+		strconv.Itoa(mobileKeyVersion),
+		strconv.Itoa(desktopKeyVersion),
 		sessionID,
 		clientEphemeralPublicKey,
 		clientNonce,
@@ -110,8 +110,8 @@ func BuildP2PAckTranscript(
 		userID,
 		mobileDeviceID,
 		desktopDeviceID,
-		fmt.Sprintf("%d", mobileKeyVersion),
-		fmt.Sprintf("%d", desktopKeyVersion),
+		strconv.Itoa(mobileKeyVersion),
+		strconv.Itoa(desktopKeyVersion),
 		sessionID,
 		clientEphemeralPublicKey,
 		serverEphemeralPublicKey,
@@ -134,8 +134,8 @@ func BuildP2PSessionInfo(
 		userID,
 		mobileDeviceID,
 		desktopDeviceID,
-		fmt.Sprintf("%d", mobileKeyVersion),
-		fmt.Sprintf("%d", desktopKeyVersion),
+		strconv.Itoa(mobileKeyVersion),
+		strconv.Itoa(desktopKeyVersion),
 		sessionID,
 		clientEphemeralPublicKey,
 		serverEphemeralPublicKey,

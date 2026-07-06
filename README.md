@@ -9,6 +9,7 @@ The end-to-end encryption core of [Olace](https://olace.app). This module contai
 - `e2ee/identity.go`: the device identity keypair and its at-rest protection (`identity.enc`). v2 format wraps the key with a random 32-byte key held in the OS keystore (libsecret, Keychain, wincred); v1 is a legacy machine-id fallback for headless environments, migrated to v2 automatically when a keystore is available.
 - `keystore/`: the OS keystore wrapper holding the identity wrap key.
 - `fsutil/`: atomic file writes and file locks used for key material persistence.
+- `cmd/genvectors` and `e2ee/testdata/`: the generator and the committed cross-implementation test vectors. Both this repo and the Dart mirror enforce the same vector file in CI, so the two implementations cannot drift apart silently.
 
 The same cryptography is mirrored client-side in Dart: [olace-crypto-dart](https://github.com/Olace-app/olace-crypto-dart). Both implementations are pinned to each other by shared test vectors in [transparency](https://github.com/Olace-app/transparency).
 
@@ -18,7 +19,7 @@ Session orchestration (reconnects, stream routing, metrics), backend registratio
 
 ## Versioning
 
-v0.x until Olace launch. Any change to wire bytes (salts, transcripts, AAD, envelope fields) is a new minor version with a wire compatibility note in the changelog, never a patch release.
+v0.x until Olace launch. Any change to wire bytes (salts, transcripts, AAD, envelope fields) is a new minor version with a wire compatibility note in [CHANGELOG.md](CHANGELOG.md), never a patch release.
 
 ## Security
 

@@ -1,4 +1,7 @@
-// Package fsutil provides small filesystem utilities used across the daemon.
+// Package fsutil provides the atomic file persistence used by the Olace
+// daemon for key material and shared state files. A torn write to a file
+// like identity.enc would lock a user out of their paired sessions, so
+// every persisted write goes through tmp file + fsync + rename.
 package fsutil
 
 import (
@@ -12,8 +15,8 @@ import (
 // WriteFileAtomic writes data to path via a tmp file + fsync + rename. On
 // POSIX (and same-volume Windows moves) rename is atomic, so a concurrent
 // reader either sees the old contents or the new contents — never a partial
-// write. Callers writing persisted state files shared with other processes
-// (Flutter reading peers.json, for instance) should use this instead of
+// write. Callers writing state files that other processes read (the Olace
+// app and daemon share a state directory) should use this instead of
 // os.WriteFile.
 func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
@@ -52,20 +55,21 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 
 // sweepTmpMinAge is the minimum age a tmp file must reach before sweep
 // will remove it. A well-behaved atomic rename completes in <1ms, so any
-// sub-30s `.tmp` is by definition still in-flight — almost always from
-// a concurrent Flutter writer racing with daemon startup. The daemon's
-// own writes are serialized by the startup flock and can't race this
-// sweep, so the threshold only guards against the cross-process case.
+// sub-30s `.tmp` is by definition still in-flight — typically another
+// process sharing the state directory racing this process's startup.
+// A caller's own writes are expected to be serialized (the Olace daemon
+// holds a startup flock), so the threshold only guards the cross-process
+// case.
 const sweepTmpMinAge = 30 * time.Second
 
 // SweepStaleTempsIn removes leftover tmp files from dir — both the
 // `<base>.tmp.<suffix>` form produced by os.CreateTemp and the bare
-// `<base>.tmp` form used by some Go writers (config.go) and by Flutter's
-// atomic writers (daemon_setup_service.dart). These are normally cleaned
-// up on success by rename or on error by deferred Remove, but a SIGKILL
-// or forced shutdown between write and rename leaves orphans behind.
-// Call this once at startup. Files newer than sweepTmpMinAge are left
-// alone to avoid stealing an in-flight Flutter rename target.
+// `<base>.tmp` form used by other atomic writers sharing the directory.
+// Tmp files are normally cleaned up on success by rename or on error by
+// deferred Remove, but a SIGKILL or forced shutdown between write and
+// rename leaves orphans behind. Call this once at startup. Files newer
+// than sweepTmpMinAge are left alone to avoid stealing another writer's
+// in-flight rename target.
 func SweepStaleTempsIn(dir string) (int, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

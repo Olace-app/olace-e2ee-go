@@ -1,15 +1,17 @@
 // Package keystore exposes a small wrapper around the OS-native keystore
 // (libsecret on Linux, Keychain on macOS, wincred on Windows) used by the
-// daemon to hold a single 32-byte wrap key that encrypts identity.enc.
+// Olace daemon to hold a single 32-byte wrap key that encrypts
+// identity.enc.
 //
-// Before this package, identity.enc was encrypted with a key derived from
-// /etc/machine-id (mode 444 root root, world-readable). Anyone with
-// filesystem read access on both files could decrypt the static X25519
-// private key on any other machine. The keystore-stored wrap key closes
-// that hole on every platform that has a usable keystore session;
-// environments without one (headless containers, SSH-only Linux boxes with
-// no DBus session) fall back to the legacy machine-id path with a
-// degraded-mode log line.
+// Why a keystore key instead of a machine-derived one: the legacy v1
+// format derived the wrap key from the OS machine id, which is readable
+// by any local process (on Linux, /etc/machine-id is world-readable), so
+// filesystem access to identity.enc plus the machine id was enough to
+// decrypt the static X25519 private key. A random wrap key held in the
+// OS keystore closes that hole on every platform with a usable keystore
+// session; environments without one (headless containers, SSH-only Linux
+// boxes with no DBus session) fall back to the legacy machine-id path
+// with a degraded-mode log line.
 package keystore
 
 import (

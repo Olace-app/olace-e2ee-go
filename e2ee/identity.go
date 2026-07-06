@@ -34,7 +34,9 @@ import (
 //	     (libsecret / Keychain / wincred) under
 //	     (service=keystore.ServiceName, account=keystore.IdentityWrapKeyAccount).
 //	v1:  nonce(12) || ciphertext || tag(16)
-//	     encrypted with HKDF(/etc/machine-id, "olace-identity-v1", deviceID).
+//	     encrypted with HKDF(OS machine id, "olace-identity-v1", deviceID),
+//	     where the machine id is /etc/machine-id on Linux, IOPlatformUUID
+//	     on macOS, or MachineGuid on Windows.
 //	     Legacy format kept readable for the one-shot v1→v2 migration that
 //	     runs automatically on the first load after an upgrade. New writes
 //	     only emit v2 when the keystore is reachable; v1 stays as the
@@ -51,10 +53,10 @@ var identityMagicV2 = []byte{'O', 'L', 'C', 'I', 'D', 0x02}
 // when the on-disk identity.enc fails decrypt OR JSON parse. Callers can
 // use errors.Is to differentiate "corrupt" from "missing" / "I/O error" /
 // "permission denied" and decide whether self-heal (re-enrollment with a
-// fresh keypair) is the right response. The Olace daemon falls through to
-// re-enrollment on any load error,
-// which works whether the cause was missing-file or corruption — this
-// sentinel exists so future callers can branch cleanly.
+// fresh keypair) is the right response. The Olace daemon falls through
+// to re-enrollment on any load error, which works whether the cause was
+// missing-file or corruption — this sentinel exists so callers can
+// branch cleanly.
 var ErrIdentityCorrupted = errors.New("identity file corrupted")
 
 // ErrIdentityUnavailable means identity.enc is present but cannot be opened
@@ -156,7 +158,7 @@ func loadIdentityV1AndMaybeMigrate(path, deviceID string, data []byte) (*LocalId
 	if len(data) < 12+16 {
 		return nil, fmt.Errorf("identity file too short (v1)")
 	}
-	machineID, err := GetMachineID()
+	machineID, err := getMachineID()
 	if err != nil {
 		return nil, fmt.Errorf("get machine ID: %w", err)
 	}
@@ -231,8 +233,10 @@ func quarantineCorruptIdentity(path, stage string, cause error) {
 	log.Printf("identity: corrupt identity.enc quarantined to %s (stage=%s, cause: %v); daemon will self-heal via fresh keypair", quarantinePath, stage, cause)
 }
 
-// GetMachineID reads the platform-specific machine identifier.
-func GetMachineID() (string, error) {
+// getMachineID reads the platform-specific machine identifier used by
+// the legacy v1 key derivation: /etc/machine-id on Linux, IOPlatformUUID
+// on macOS, MachineGuid on Windows.
+func getMachineID() (string, error) {
 	switch runtime.GOOS {
 	case "linux":
 		data, err := os.ReadFile("/etc/machine-id")
@@ -335,7 +339,7 @@ func writeEncryptedIdentityV2(path string, wrapKey []byte, identity *LocalIdenti
 }
 
 func writeEncryptedIdentityV1(path, deviceID string, identity *LocalIdentity) error {
-	machineID, err := GetMachineID()
+	machineID, err := getMachineID()
 	if err != nil {
 		return err
 	}
