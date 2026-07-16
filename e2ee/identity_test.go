@@ -87,7 +87,7 @@ func TestLoadIdentityV2QuarantinesWhenWrapKeyMissing(t *testing.T) {
 	oldStore := identityStore
 	t.Cleanup(func() { identityStore = oldStore })
 	identityStore = func() keystore.Store {
-		return &fakeIdentityStore{getErr: keystore.ErrNotFound}
+		return &fakeIdentityStore{getErr: keystore.ErrNotFound, available: true}
 	}
 
 	path := filepath.Join(t.TempDir(), "identity.enc")
@@ -116,5 +116,41 @@ func TestLoadIdentityV2QuarantinesWhenWrapKeyMissing(t *testing.T) {
 	}
 	if len(matches) != 1 {
 		t.Fatalf("expected one quarantined identity file, got %d: %v", len(matches), matches)
+	}
+}
+
+func TestLoadIdentityV2KeepsFileWhenNotFoundButKeystoreUnavailable(t *testing.T) {
+	oldStore := identityStore
+	t.Cleanup(func() { identityStore = oldStore })
+	identityStore = func() keystore.Store {
+		return &fakeIdentityStore{getErr: keystore.ErrNotFound, available: false}
+	}
+
+	path := filepath.Join(t.TempDir(), "identity.enc")
+	key := bytes.Repeat([]byte{5}, identityWrapKeyLen)
+	identity := &LocalIdentity{
+		DeviceID:    "didv1_desktop",
+		PublicKey:   "public",
+		PrivateKey:  "private",
+		Fingerprint: "fingerprint",
+		KeyVersion:  1,
+	}
+	if err := writeEncryptedIdentityV2(path, key, identity); err != nil {
+		t.Fatalf("write identity: %v", err)
+	}
+
+	_, err := LoadEncryptedIdentity(path, "raw-device-id")
+	if !errors.Is(err, ErrIdentityUnavailable) {
+		t.Fatalf("expected ErrIdentityUnavailable, got %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("identity file should remain in place: %v", err)
+	}
+	matches, err := filepath.Glob(path + ".corrupt.*")
+	if err != nil {
+		t.Fatalf("glob corrupt identities: %v", err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("identity file was quarantined on unavailable keystore: %v", matches)
 	}
 }

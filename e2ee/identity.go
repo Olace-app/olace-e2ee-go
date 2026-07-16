@@ -139,9 +139,13 @@ func loadIdentityV2(path string, body []byte) (*LocalIdentity, error) {
 		if !errors.Is(err, keystore.ErrNotFound) {
 			return nil, fmt.Errorf("%w: keystore wrap key unavailable: %v", ErrIdentityUnavailable, err)
 		}
-		// No wrap key in the keystore + v2 ciphertext on disk = we cannot
-		// recover. Quarantine and let the caller's self-heal path mint a
-		// fresh keypair. This costs the user their paired sessions but
+		// ErrNotFound.
+		if !store.Available() {
+			return nil, fmt.Errorf("%w: keystore not ready (wrap key lookup returned not-found); keeping identity for retry", ErrIdentityUnavailable)
+		}
+		// No wrap key in a WORKING keystore + v2 ciphertext on disk = we
+		// cannot recover. Quarantine and let the caller's self-heal path mint
+		// a fresh keypair. This costs the user their paired sessions but
 		// happens only if the user (or another process) wiped the keyring
 		// entry while the daemon was down.
 		quarantineCorruptIdentity(path, "keystore-missing", err)
